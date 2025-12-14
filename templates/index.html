@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>YouTube Downloader</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f9f9f9;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            min-height: 100vh;
+            padding-top: 40px;
+        }
+        .container {
+            max-width: 500px;
+            width: 100%;
+            background: #fff;
+            padding: 25px;
+            border-radius: 8px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        h1 { color: #333; margin-bottom: 20px; }
+        label { font-weight: bold; display: block; margin-top: 15px; text-align: left; }
+        input[type="text"], select {
+            width: 100%;
+            padding: 8px;
+            margin-top: 5px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        button {
+            margin-top: 20px;
+            padding: 10px 20px;
+            background: #0078d7;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover { background: #005fa3; }
+        .message {
+            margin-top: 20px;
+            font-size: 1.1em;
+            color: green;
+        }
+        .progress-bar {
+            width: 100%;
+            background: #eee;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 15px;
+        }
+        .progress-fill {
+            height: 20px;
+            background: #0078d7;
+            width: 0%;
+            color: white;
+            text-align: center;
+            font-size: 0.9em;
+            transition: width 0.3s;
+        }
+        .spinner {
+            margin: 20px auto;
+            border: 6px solid #f3f3f3;
+            border-top: 6px solid #0078d7;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            display: none;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎬 YouTube Downloader</h1>
+        <form method="POST" onsubmit="showSpinner()">
+            <label for="url">Video URL:</label>
+            <input type="text" id="url" name="url" required>
+
+            <label for="choice">Download Type:</label>
+            <select id="choice" name="choice" onchange="toggleOptions()">
+                <option value="video">Video (MP4)</option>
+                <option value="audio">Audio (MP3)</option>
+            </select>
+
+            <div id="video-options">
+                <label for="resolution">Video Resolution:</label>
+                <select id="resolution" name="resolution">
+                    <option value="best">Best</option>
+                    <option value="1080">1080p</option>
+                    <option value="720">720p</option>
+                </select>
+            </div>
+
+            <div id="audio-options" style="display:none;">
+                <label for="quality">Audio Quality (kbps):</label>
+                <select id="quality" name="quality">
+                    <option value="128" selected>128</option>
+                    <option value="192">192</option>
+                    <option value="256">256</option>
+		    <option value="320">320</option>
+                </select>
+            </div>
+
+            <button type="submit">Download</button>
+        </form>
+
+        <div class="spinner" id="spinner"></div>
+
+        {% if message and filename %}
+            <div class="message">{{ message }}</div>
+            <p>📂 <a href="{{ url_for('download_file', filename=filename) }}">Download File</a></p>
+        {% endif %}
+
+        <div class="progress-bar">
+            <div class="progress-fill" id="progress-fill">0%</div>
+        </div>
+    </div>
+
+    <script>
+        function toggleOptions() {
+            const choice = document.getElementById("choice").value;
+            document.getElementById("video-options").style.display = (choice === "video") ? "block" : "none";
+            document.getElementById("audio-options").style.display = (choice === "audio") ? "block" : "none";
+        }
+
+        function showSpinner() {
+            document.getElementById("spinner").style.display = "block";
+        }
+
+        async function pollProgress() {
+            try {
+                const res = await fetch("/progress");
+                const data = await res.json();
+                const progressText = data.progress || "";
+                const fill = document.getElementById("progress-fill");
+
+                const match = progressText.match(/([0-9.]+)%/);
+                if (match) {
+                    fill.style.width = match[1] + "%";
+                    fill.textContent = progressText;
+                } else {
+                    fill.style.width = "100%";
+                    fill.textContent = progressText;
+                }
+
+                if (progressText.includes("Download finished") || progressText.includes("Download complete")) {
+                    document.getElementById("spinner").style.display = "none";
+                }
+            } catch (err) {
+                console.error("Progress polling failed", err);
+            }
+        }
+
+        setInterval(pollProgress, 2000);
+    </script>
+</body>
+</html>
